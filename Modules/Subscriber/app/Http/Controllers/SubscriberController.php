@@ -2,66 +2,125 @@
 
 namespace Modules\Subscriber\app\Http\Controllers;
 
+use Illuminate\Http\JsonResponse;
+use Modules\User\app\Models\User;
 use App\Http\Controllers\Controller;
-use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
-use Illuminate\Http\Response;
+use Modules\User\Enums\UserRoleEnum;
+use App\Services\JsonResponseService;
+use Spatie\QueryBuilder\QueryBuilder;
+use App\Services\PaginationMetaService;
+use Modules\Subscriber\app\Models\Subscriber;
+use Symfony\Component\HttpFoundation\Response;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Modules\Subscriber\app\Resources\SubscribersListResource;
+use Modules\Subscriber\app\Resources\SubscriberDetailsResource;
+use Modules\Subscriber\app\Http\Requests\StoreSubscriberRequest;
+use Modules\Subscriber\app\Http\Requests\UpdateSubscriberRequest;
 
 class SubscriberController extends Controller
 {
+    protected $paginationMetaService;
+    protected $jsonResponseService;
+
+    public function __construct(PaginationMetaService $paginationMetaService, JsonResponseService $jsonResponseService)
+    {
+        $this->paginationMetaService = $paginationMetaService;
+        $this->jsonResponseService = $jsonResponseService;
+    }
+
+
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(): JsonResponse
     {
-        return view('subscriber::index');
+        $subscribersQuery = QueryBuilder::for(Subscriber::class)
+            ->with('user:id.name,username')
+            ->select(['id', 'status', 'user_id', 'created_at', 'deleted_at'])
+            ->allowedFilters(['name', 'username', 'status'])
+            ->latest();
+
+        $subscribers = request()->page === null ? $subscribersQuery->get() : $subscribersQuery->paginate(request()->input('limit'));
+
+        // Use PaginationMetaService to get pagination meta data
+        $paginationMeta = $subscribers instanceof LengthAwarePaginator ?
+            $this->paginationMetaService->generatePaginationMeta($subscribers) : null;
+
+        // Generate JSON response using JsonResponseService
+        $jsonResponse = $this->jsonResponseService->generateJsonResponse(
+            metaData: $paginationMeta,
+            data: SubscribersListResource::collection($subscribers),
+        );
+
+        return $jsonResponse;
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        return view('subscriber::create');
-    }
 
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request): RedirectResponse
+    public function store(StoreSubscriberRequest $request): JsonResponse
     {
-        //
+        // dd($request->validated()['userData']);
+        $user = User::create($request->validated()['userData']);
+        $user->subscriber()->create($request->validated()['subscriberData']);
+        $user->assignRole(UserRoleEnum::subscriber);
+
+        // Generate JSON response using JsonResponseService
+        $jsonResponse = $this->jsonResponseService->generateJsonResponse(
+            message: trans('messages.add'),
+            statusCode: Response::HTTP_CREATED
+        );
+
+        return $jsonResponse;
     }
+
 
     /**
      * Show the specified resource.
      */
-    public function show($id)
+    public function show(Subscriber $subscriber): JsonResponse
     {
-        return view('subscriber::show');
+        $subscriber->load('user');
+
+        // Generate JSON response using JsonResponseService
+        $jsonResponse = $this->jsonResponseService->generateJsonResponse(
+            data: new SubscriberDetailsResource($subscriber),
+        );
+
+        return $jsonResponse;
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit($id)
-    {
-        return view('subscriber::edit');
-    }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, $id): RedirectResponse
+    public function update(UpdateSubscriberRequest $request, Subscriber $subscriber): JsonResponse
     {
-        //
+        $subscriber->user->update($request->validated()['userData']);
+        $subscriber->update($request->validated()['subscriberData']);
+
+        // Generate JSON response using JsonResponseService
+        $jsonResponse = $this->jsonResponseService->generateJsonResponse(
+            message: trans('messages.edit'),
+        );
+
+        return $jsonResponse;
     }
+
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy($id)
+    public function destroy(Subscriber $subscriber): JsonResponse
     {
-        //
+        $subscriber->user->delete();
+
+        // Generate JSON response using JsonResponseService
+        $jsonResponse = $this->jsonResponseService->generateJsonResponse(
+            message: trans('messages.delete'),
+        );
+
+        return $jsonResponse;
     }
 }

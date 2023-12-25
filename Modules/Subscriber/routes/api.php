@@ -2,6 +2,7 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Modules\Subscriber\app\Http\Controllers\SubscriberController;
 
 /*
     |--------------------------------------------------------------------------
@@ -14,6 +15,18 @@ use Illuminate\Support\Facades\Route;
     |
 */
 
-Route::middleware(['auth:sanctum'])->prefix('v1')->name('api.')->group(function () {
-    Route::get('subscriber', fn (Request $request) => $request->user())->name('subscriber');
+
+Route::group([
+    // Subscribers
+    'prefix'        => 'subscribers',
+    'middleware'    => [
+        'auth:sanctum',
+        'role:admin'
+    ]
+], function () {
+    Route::get('', [SubscriberController::class, 'index']);
+    Route::post('', [SubscriberController::class, 'store']);
+    Route::get('{subscriber}', [SubscriberController::class, 'show']);
+    Route::put('{subscriber}', [SubscriberController::class, 'update']);
+    Route::delete('{subscriber}', [SubscriberController::class, 'destroy']);
 });
