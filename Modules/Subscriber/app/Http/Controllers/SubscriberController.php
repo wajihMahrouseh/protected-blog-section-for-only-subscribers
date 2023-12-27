@@ -36,7 +36,7 @@ class SubscriberController extends Controller
     public function index(): JsonResponse
     {
         $subscribersQuery = QueryBuilder::for(Subscriber::class)
-            ->with('user:id.name,username')
+            ->with('user:id,name,username')
             ->select(['id', 'status', 'user_id', 'created_at', 'deleted_at'])
             ->allowedFilters([
                 AllowedFilter::callback('name', function ($query, $value) {
