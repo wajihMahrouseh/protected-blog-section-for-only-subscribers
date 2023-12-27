@@ -13,11 +13,15 @@ class BlogsListResource extends JsonResource
     {
         // return parent::toArray($request);
         return [
-            'id' => $this->id, 
-            'title' => $this->title, 
-            'publishDate' => $this->publish_date, 
-            'status' => $this->status, 
-            'deletedAt' => $this->deleted_at
+            'id' => $this->id,
+            'title' => $this->title,
+            'publishDate' => $this->publish_date,
+            'status' => $this->status,
+            'deletedAt' => $this->deleted_at,
+
+            'image' => $this->whenLoaded('media', function () {
+                return $this->getFirstMediaUrl('photos');
+            }),
         ];
     }
 }

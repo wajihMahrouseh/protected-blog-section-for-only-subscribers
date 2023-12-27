@@ -32,6 +32,7 @@ class BlogController extends Controller
     public function index(): JsonResponse
     {
         $blogsQuery = QueryBuilder::for(Blog::class)
+            ->with(['media'])
             ->select(['id', 'title', 'publish_date', 'status', 'created_at', 'deleted_at'])
             ->allowedFilters(['title', 'publish_date', 'status'])
             ->latest();
