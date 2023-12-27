@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use Modules\User\Enums\UserRoleEnum;
 use App\Services\JsonResponseService;
 use Spatie\QueryBuilder\QueryBuilder;
+use Spatie\QueryBuilder\AllowedFilter;
 use App\Services\PaginationMetaService;
 use Modules\Subscriber\app\Models\Subscriber;
 use Symfony\Component\HttpFoundation\Response;
@@ -37,7 +38,20 @@ class SubscriberController extends Controller
         $subscribersQuery = QueryBuilder::for(Subscriber::class)
             ->with('user:id.name,username')
             ->select(['id', 'status', 'user_id', 'created_at', 'deleted_at'])
-            ->allowedFilters(['name', 'username', 'status'])
+            ->allowedFilters([
+                AllowedFilter::callback('name', function ($query, $value) {
+                    $query->whereHas('user', function ($query) use ($value) {
+                        $query->where('name', $value);
+                    });
+                }),
+                AllowedFilter::callback('username', function ($query, $value) {
+                    $query->whereHas('user', function ($query) use ($value) {
+                        $query->where('username', $value);
+                    });
+                }),
+
+                'status'
+            ])
             ->latest();
 
         $subscribers = request()->page === null ? $subscribersQuery->get() : $subscribersQuery->paginate(request()->input('limit'));
