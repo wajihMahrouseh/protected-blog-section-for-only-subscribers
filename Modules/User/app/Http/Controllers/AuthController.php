@@ -27,15 +27,15 @@ class AuthController extends Controller
         // Check if this is the first login
         if (!$user->first_login) {
             // Store user agent data
-            $user->token = $token;
             $user->first_login = true;
-            $user->last_login_device = $request->header('User-Agent') . '&' . $user->username;
+            $user->token = $token;
+            $user->last_login_device = $request->header('User-Agent') . '&' . $token;
             $user->save();
         }
 
 
         // Check if user agent matches
-        elseif ($user->first_login && $user->last_login_device !== ($request->header('User-Agent') . '&' . $user->username)) {
+        elseif ($user->first_login && $user->last_login_device !== ($request->header('User-Agent') . '&' . $user->token)) {
             // User is trying to login from a different device
             return response()->json([
                 'message' => trans('messages.loginWithDifferentDevice'),
@@ -44,7 +44,7 @@ class AuthController extends Controller
 
         // Update last login device
         $user->token = $token;
-        $user->last_login_device = ($request->header('User-Agent') . '&' . $user->username);
+        $user->last_login_device = ($request->header('User-Agent') . '&' . $token);
         $user->save();
 
         // if (Auth::attempt($request->only('email', 'password'))) {
